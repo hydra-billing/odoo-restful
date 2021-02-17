@@ -5,7 +5,7 @@ import logging
 import dateutil.parser
 from odoo import http
 from odoo.http import request
-from odoo.addons.restful.common import valid_response, invalid_response, prepare_response, extract_arguments
+from ..common import valid_response, invalid_response, prepare_response, extract_arguments
 
 _logger = logging.getLogger(__name__)
 
@@ -103,7 +103,10 @@ class APIController(http.Controller):
         """
         try:
             record = request.env[model].sudo().browse(id)
-            if record.read():
+            if model == 'hr.employee':
+                fields = request.env[model].fields_get()
+                return valid_response(prepare_response(record.read(fields=fields), one=True))
+            elif record.read():
                 return valid_response(prepare_response(record.read(), one=True))
             else:
                 return invalid_response('missing_record',
@@ -258,8 +261,11 @@ class APIController(http.Controller):
                     record) if callable(getattr(record, method))]
                 if _callable:
                     # action is a dynamic variable.
-                    getattr(record, action)()
-                record.refresh()
+                    action_result=getattr(record, action)()
+                if 'action_result' in vars() and isinstance(action_result, dict) and 'res_id' in action_result.keys():
+                    record = request.env[model].sudo().browse(action_result['res_id'])
+                else:
+                    record.refresh()
                 return valid_response(prepare_response(record.read(), one=True))
             else:
                 return invalid_response('missing_record',

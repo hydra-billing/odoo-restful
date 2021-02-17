@@ -4,7 +4,7 @@ import json
 import werkzeug.wrappers
 from odoo import http
 from odoo.http import request
-from odoo.addons.restful.common import invalid_response, token_response, valid_response
+from ..common import invalid_response, token_response, valid_response
 
 _logger = logging.getLogger(__name__)
 
