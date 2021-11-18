@@ -222,6 +222,14 @@ class APIController(http.Controller):
         req = requests.put('{}/api/{}/{}'.format(base_url, model, id), headers=headers, data=data)
         print(req.json())
         """
+        for key, value in kwargs.items():
+            if isinstance(value, str):
+                if value.startswith('[') & value.endswith(']'):
+                    list_str = value.replace('[', '').replace(']', '').split(',')
+                    list_int = []
+                    for each in list_str:
+                        list_int.append(int(each))
+                    kwargs[key] = list_int
         try:
             record = request.env[model].sudo().browse(id)
             if record.read():
@@ -254,6 +262,18 @@ class APIController(http.Controller):
         print(req.content)
         """
 
+        _logger.debug(f'Body: {kwargs}')
+        for key, value in kwargs.items():
+            if (isinstance(value, str)):
+                if (value.startswith('[') & value.endswith(']')):
+                    value = value.replace('[', '')
+                    value = value.replace(']', '')
+                    values_str = value.split(',')
+                    values_int = []
+                    for value in values_str:
+                        values_int.append(int(value))
+                    kwargs[key] = values_int
+
         try:
             record = request.env[model].sudo().browse(id)
             if record.read():
@@ -261,7 +281,10 @@ class APIController(http.Controller):
                     record) if callable(getattr(record, method))]
                 if _callable:
                     # action is a dynamic variable.
-                    action_result=getattr(record, action)()
+                    if (kwargs):
+                        action_result = getattr(record, action)(**kwargs)
+                    else:
+                        action_result = getattr(record, action)()
                 if 'action_result' in vars() and isinstance(action_result, dict) and 'res_id' in action_result.keys():
                     record = request.env[model].sudo().browse(action_result['res_id'])
                 else:
@@ -269,7 +292,8 @@ class APIController(http.Controller):
                 return valid_response(prepare_response(record.read(), one=True))
             else:
                 return invalid_response('missing_record',
-                                        'record object with id %s could not be found or %s object has no method %s' % (id, model, action), 404)
+                                        'record object with id %s could not be found or %s object has no method %s' % (
+                                        id, model, action), 404)
         except Exception as e:
             return invalid_response('exception', e, 503)
 
